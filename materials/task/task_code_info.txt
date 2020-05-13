@@ -1,0 +1,9 @@
+The task running code provided here is identical to the code in https://github.com/alylab/artmusePatient , and as such the names of the experiment-running Matlab script files are named with "patient". In the current study, we conducted a nicotine manipulation before administering the task, but the task itself is the same between studies.
+
+The task files "artmusePatient.m" and "artmusePatient_practice.m" need to be in the same folder as the "stimuli" and "practiceStimuli" folders. Both scripts will require you to enter a subject number as well as subject initials. These files will output a ".mat" and ".txt" result files as well as print the behavioral results into the command window. When you have run through the task, you can place the two output files into the "data" folder.
+
+Within the neighboring "data" folder at ../data you will find "data_dictionary.txt" which details the variables at the header column for the ".txt" file outputted by "artmusePatient.m" and "artmusePatient_practice.m".
+
+The individual subject files that were used for data analysis can be found in the "data" folder.
+
+If you run into any issue or have any questions, feel free to reach out to Nicholas Ruiz at nar2160@columbia.edu. Thank you!
