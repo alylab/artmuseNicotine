@@ -19,8 +19,8 @@ demos = read_csv(paste(data_dir, "demo_smoke_habits.csv", sep = "/")) %>%
   mutate(cigs_per_day_est = 10 * cigs_per_day_est) %>%
   mutate_if(is.numeric, as.integer) %>%
   mutate(cigs_per_day_est = .1 * cigs_per_day_est,
-         ppm_on = if_else(condition == 1, ppm_s1, ppm_s2),
-         ppm_off = if_else(condition == 1, ppm_s2, ppm_s1))
+         ppm_on = if_else(session_order == 1, ppm_s1, ppm_s2),
+         ppm_off = if_else(session_order == 1, ppm_s2, ppm_s1))
 
 # Read in all .txt files in the raw data folder
 raw = tibble(filename = list.files(data_dir_task, pattern = ".txt", full.names = TRUE)) %>%
@@ -65,7 +65,7 @@ raw = tibble(filename = list.files(data_dir_task, pattern = ".txt", full.names =
             by = c("subj_num", "session_num")) %>%
   select(-session_order_reverse) %>%
   # Scrub all subjects who don't appear in demographics data
-  filter(!is.na(condition)) %>%
+  filter(!is.na(session_order)) %>%
   unnest(data)
 
 ## unmodeled summary statistics from raw ----
