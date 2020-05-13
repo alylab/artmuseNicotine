@@ -52,18 +52,18 @@ raw = tibble(filename = list.files(data_dir_task, pattern = ".txt", full.names =
          session_num = if_else(session_num == "2", 2L, 1L)) %>%
   select(-filename) %>%
   # bind on desired demos
-  # create "on_smoking" based on "condition"
+  # create "on_smoking" based on "session_order"
   # which indicates which session (1 or 2) was the smoking session
   left_join(demos %>%
-              select(subj_num, condition, ppm_on, ppm_off) %>%
+              select(subj_num, session_order, ppm_on, ppm_off) %>%
               pivot_longer(names_to = "on_smoking", values_to = "ppm", cols = starts_with("ppm")) %>% 
               mutate(on_smoking = recode(on_smoking, ppm_on = 1L, ppm_off = 0L),
                      # move session_num to 0 and 1, I gotta plan
-                     condition_reverse = if_else(condition == 1L, 2L, 1L),
-                     session_num = if_else(on_smoking == 1, condition, condition_reverse),
+                     session_order_reverse = if_else(session_order == 1L, 2L, 1L),
+                     session_num = if_else(on_smoking == 1, session_order, session_order_reverse),
                      ppm_z = c(scale(ppm))),
             by = c("subj_num", "session_num")) %>%
-  select(-condition_reverse) %>%
+  select(-session_order_reverse) %>%
   # Scrub all subjects who don't appear in demographics data
   filter(!is.na(condition)) %>%
   unnest(data)
