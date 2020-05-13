@@ -1,4 +1,4 @@
-data dictionary for abbreviations used in "artmusePatient_XXX.txt" files showing session data. These are the terms found in the header column. 
+data dictionary for abbreviations used in "artmusePatient_XXX_SX.txt" files showing session data. These are the terms found in the header column. These are the terms found in the header column. Below, you will also find explanations for the words in the header of the 'demo_smoke_habits.csv' file.
 
 trial - trial number for proceeding data (1-80)
 stimOnsetTime - for trial N, time in seconds (relative to experiment start) the base image of trial N appeared
@@ -41,7 +41,15 @@ c_IVArtFA - control invalid art trial; false alarm rate
 c_IVRoomH - control invalid room trial; hit rate
 c_IVRoomFA - control invalid room trial; false alarm rate
 
+For the 'demo_smoke_habits.csv' file:
 
-
-
-
+subj_num - each participants unique subject number
+session_order - refers to the order of each participant's session. 1 refers to their first session (S1) being their ON session, and their second session (S2) being their OFF session. 2 refers to their first session (S1) being their OFF session, and their second session (S2) being their ON session.
+ppm_s1 - expired breath carbon monoxide parts per million (PPM) score for their first session
+cigs_12hr_s1 - how many cigarettes the participant reported smoking in the 12 hours prior to their first session
+cigs_1hr_s1 - how many cigarettes the participant reported smoking in the last hour prior to their first session
+ppm_s2 - expired breath carbon monoxide parts per million (PPM) score for their second session
+cigs_12hr_s2 - how many cigarettes the participant reported smoking in the 12 hours prior to their second session
+cigs_1hr_s2 - how many cigarettes the participant reported smoking in the last hour prior to their second session
+cigs_per_day_est - average amount of cigarettes each participant reported smoking per day
+ftnd - each participants score on the Fagerstrom Test for Nicotine Dependence

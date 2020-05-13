@@ -4,6 +4,8 @@ The task files "artmusePatient.m" and "artmusePatient_practice.m" need to be in 
 
 Within the neighboring "data" folder at ../data you will find "data_dictionary.txt" which details the variables at the header column for the ".txt" file outputted by "artmusePatient.m" and "artmusePatient_practice.m".
 
-The individual subject files that were used for data analysis can be found in the "data" folder.
+The individual subject files that were used for data analysis can be found in the "data" folder. These files are labeled by subject and session number. For example, 'artmusePatient_501_S1.mat' refers to subject number 501's first session data and 'artmusePatient_501_S2.mat' refers to subject number 501's second session data.
+
+Additionally, in the 'demo_smoke_habits.csv' file, you will find each subject number, their session order, and other smoking habit information. This is discussed further in the 'data_dictionary.txt' file.
 
 If you run into any issue or have any questions, feel free to reach out to Nicholas Ruiz at nar2160@columbia.edu. Thank you!
