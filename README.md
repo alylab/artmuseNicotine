@@ -42,7 +42,7 @@ The below descriptions are organized according to the folder structure.
 
 #### task
 
-In this folder, find experiment-running Matlab scripts and stimulus images necessary to run the "art gallery" attention task. These files _should_ run out-of-the box _if you have the following Matlab setup already on your machine._
+In this folder, find experiment-running Matlab scripts and stimulus images necessary to run the "art gallery" attention task. This is the [same task](https://github.com/alylab/artmusePatient) that was run in Ruiz, Meager, Agarwal, & Aly (2020). The task files are identical to those in the other study (and identically named, so they have "patient" in the names per the first study). These files _should_ run out-of-the box _if you have the following Matlab setup already on your machine._
 
 - Matlab 2017a or 2017b, should run on newer editions but unconfirmed
 - [PsychToolbox 3.0.15](http://psychtoolbox.org/download.html)
