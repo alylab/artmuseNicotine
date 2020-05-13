@@ -1,4 +1,4 @@
-﻿subj_num,condition,age,gender,ppm_s1,cigs_12hr_s1,cigs_1hr_s1,ppm_s2,cigs_12_hr_s2,cigs_1hr_s2,cigs_per_day_est,ftnd
+﻿subj_num,session_order,age,gender,ppm_s1,cigs_12hr_s1,cigs_1hr_s1,ppm_s2,cigs_12_hr_s2,cigs_1hr_s2,cigs_per_day_est,ftnd
 501,2,19,M,3,0,,4,1,,1,0
 502,1,22,F,5,1,,3,0,,7,2
 503,2,22,F,3,0,,14,2,,6.5,1
