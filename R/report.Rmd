@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(magrittr)
 library(rlang)
+source(here::here("R", "paths.R"))
 
 load(paste(stats_dir,"preplots_rstanarm.rda", sep = "/"))
 load(paste(stats_dir,"preplots_rt_rstanarm.rda", sep = "/"))
