@@ -395,11 +395,12 @@ summarize_report <- function (data, col, ..., stat_name = "", unit_name = "", di
     summarize(avg = mean(value),
               q025 = quantile(value, .025),
               q975 = quantile(value, .975)) %>% 
-    mutate_at(c("avg", "q025", "q975"), signif, digits = digs) %>%
+    mutate_at(c("avg", "q025", "q975"), ~formatC(signif(., digits = digs), digits = digs, format = "fg", flag = "#", mode = "double")) %>%
     mutate(txt_apa = pmap_chr(list(avg, q025, q975),
                               function (a, b, c) {glue::glue(glue_in)}
     )
-    )
+    ) %>% 
+     mutate_at(c("avg", "q025", "q975"), as.numeric)
   
   return (data)
 }
