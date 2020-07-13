@@ -5,6 +5,7 @@ require(magrittr)
 options(mc.cores = parallel::detectCores())
 future::plan(future::multiprocess)
 
+source(here::here("R", "paths.R"))
 load(paste(stats_dir, "raw.rda", sep = "/"))
 
 ## resample the bootstrap iterations ----
@@ -113,11 +114,11 @@ aprime_by_ppm_boot <- boots_by_subj %>%
          coefs_unadj = map(data, ~lm(value_diff ~ ppm_diff, data = .x) %>%
                              broom::tidy())) %>%
   left_join(aprime_by_ppm %>%
-              select(exptCond, probe, data_raw = data, coefs_raw = model) %>%
+              select(metric_type, exptCond, probe, data_raw = data, coefs_raw = model) %>%
               mutate(coefs_raw = map(coefs_raw,
                                      ~broom::tidy(.) %>%
                                        rename_if(is.numeric, ~paste0(., "_raw")))),
-            by = c("exptCond", "probe")) %>%
+            by = c("metric_type", "exptCond", "probe")) %>%
   mutate(predicted_resid = map2(data_raw, model_resid,
                                 ~.x %>%
                                   select(ppm_diff_resid) %>%
