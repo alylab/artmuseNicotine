@@ -615,45 +615,51 @@ Next, we interrogated task-dependent effects of nicotine on performance. Because
 ```{r, echo = FALSE}
 coefs_aprime_by_ppm <- aprime_by_ppm_boot %>%
   mutate(coefs = map2(coefs, coefs_raw, ~full_join(.x, .y, by = "term"))) %>%
-  select(iteration, exptCond, probe, coefs) %>%
+  select(iteration, metric_type, exptCond, probe, coefs) %>%
   unnest(coefs) %>%
-  rename(raw = "estimate_raw") %>%
+  rename(raw = "estimate_raw", perf_metric_type = "metric_type") %>%
   filter(term == "ppm_diff") %>%
-  summarize_report(estimate, exptCond, probe, raw, stat_name = "beta", unit_name = "ppm units") %>%
+  summarize_report(estimate, perf_metric_type, exptCond, probe, raw,
+                   stat_name = "beta", unit_name = "ppm units") %>%
   ungroup() %>%
-  mutate(raw = signif(raw, digits = signif_digits),
+  select(-metric_type) %>% 
+  rename(metric_type = "perf_metric_type") %>% 
+  mutate(raw = formatC(signif(raw, digits = signif_digits), digits = signif_digits, format = "fg", flag = "#", mode = "double"),
          txt_apa_2 = glue::glue("beta = {raw} ppm units, bootstrapped 95% CI [{q025}, {q975}]"))
 
 pcor_aprime_by_ppm <- aprime_by_ppm_boot %>%
-  select(iteration, exptCond, probe, starts_with("resid")) %>%
-  unnest(c(resid_aprime_diff, resid_ppm_diff)) %>%
-  group_by(iteration, exptCond, probe) %>%
-  summarize(pcor = cor(aprime_diff_resid, ppm_diff_resid)) %>%
-  summarize_report(pcor, exptCond, probe, stat_name = "partial Pearson correlation") %>%
+  select(iteration, metric_type, exptCond, probe, starts_with("resid")) %>%
+  unnest(c(resid_value_diff, resid_ppm_diff)) %>%
+  group_by(iteration, metric_type, exptCond, probe) %>%
+  summarize(pcor = cor(value_diff_resid, ppm_diff_resid)) %>%
+  rename(perf_metric_type = "metric_type") %>%
+  summarize_report(pcor, perf_metric_type, exptCond, probe, stat_name = "partial Pearson correlation") %>%
+  select(-metric_type) %>% 
+  rename(metric_type = "perf_metric_type") %>% 
   mutate(txt_apa_2 = glue::glue("partial Pearson correlation = {avg}, bootstrapped 95% CI [{q025}, {q975}]"))
 
 # at approx q925 this stuff starts to pop out. not q975
 pcor_diff_aprime_by_ppm <- aprime_by_ppm_boot %>%
-  select(iteration, exptCond, probe, starts_with("resid")) %>%
-  unnest(c(resid_aprime_diff, resid_ppm_diff)) %>%
-  group_by(iteration, exptCond, probe) %>%
-  summarize(pcor = cor(aprime_diff_resid, ppm_diff_resid)) %>%
+  select(iteration, metric_type, exptCond, probe, starts_with("resid")) %>%
+  unnest(c(resid_value_diff, resid_ppm_diff)) %>%
+  group_by(iteration, metric_type, exptCond, probe) %>%
+  summarize(pcor = cor(value_diff_resid, ppm_diff_resid)) %>%
+  ungroup() %>% 
   pivot_wider(names_from = c(exptCond, probe), values_from = pcor) %>%
   mutate(pcor_diff_sa = relational_room - relational_art,
          pcor_diff_ia = relational_room - control_art,
          pcor_diff_ir = relational_room - control_room) %>%
-  summarize_report(pcor_diff, stat_name = "partial Pearson's r difference")
+  rename(perf_metric_type = "metric_type") %>%
+  summarize_report(pcor_diff, perf_metric_type, stat_name = "partial Pearson's r difference")
 ```
 
 _Supplementary Models of Performance._ The above analyses model the task as a 2 (condition: identical or similar) x 2 (attentional state: art or room) x 2 (smoking session: OFF or ON) factorial design. Although this has many advantages, there are also statistical disadvantages (see **Methods**). To assess whether our results vary based on statistical modeling approach, we also examined performance ON vs. OFF smoking with two other approaches. The first approach used a model with separate predictors for eight factorial levels of interest (i.e., the OFF and ON smoking sessions for identical art, identical room, similar art, and similar room trials). The second approach used four separate models to examine performance ON vs. OFF smoking in each task separately (one model each for identical art, identical room, similar art, similar room). We found that in these supplementary models, there was still no difference in performance between smoking sessions for any of the tasks. Thus, across multiple statistical modeling approaches, we failed to find a performance benefit ON vs OFF nicotine.
 
 _Individual Differences._ The above analyses treat smoking as a binary variable: they simply compared the ON and OFF smoking sessions. However, more precise information is available about individuals’ smoking, because for each session we obtained measures of expired breath carbon monoxide (CO) parts-per-million (ppm). This tells us how recently or how much an individual smoked, allowing us to investigate possible dose-dependent effects of nicotine smoking (e.g., Vollstädt-Klein et al., 2011; Vossel, Warbrick, Mobascher, Winterer, & Fink, 2011). If nicotine smoking enhances attentional performance, then the individuals who show the greatest CO ppm difference (in the ON vs. OFF smoking session) should show the greatest performance enhancements (in the ON vs. OFF smoking session). To investigate this, we ran four independent, between-participants linear regressions predicting A’ difference as a function of CO ppm difference (ON vs. OFF), with one regression for each task: identical art, identical room, similar art, and similar room.
 
-**Figure 6.** Dose-dependent effects of nicotine smoking on behavioral sensitivity (A’). On similar room trials (bottom right), participants who showed a greater increase in CO ppm from the OFF to the ON smoking session showed larger increases in A’ from the OFF to the ON smoking session. Participants did not show such an effect for identical art, identical room, or similar art trials. Within each panel, each point represents one participant; each participant appears in all four panels. * bootstrapped p < .05.
+**Figure 6.** Dose-dependent effects of nicotine smoking on behavioral sensitivity (A’). On similar room trials (bottom right), participants who showed a greater increase in CO ppm from the OFF to the ON smoking session showed larger increases in A’ from the OFF to the ON smoking session. Participants did not show such an effect for identical art, identical room, or similar art trials. Within each panel, each point represents one participant; each participant appears in all four panels. Heavy lines and error ribbons indicate line of best fit +- 95% confidence interval for ON-OFF A' difference vs. ON-OFF CO ppm difference, displayed without adjusting for A' OFF smoking for simplicity. * bootstrapped p < .05.
 
-Indeed, we found a modest positive correlation between these measures for the similar room task (`r coefs_aprime_by_ppm %>% filter(exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`; `r pcor_aprime_by_ppm %>% filter(exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`), such that a CO increase of 1 ppm from OFF to ON smoking predicted a `r coefs_aprime_by_ppm %>% filter(exptCond == "relational", probe == "room") %>% pull(raw)` unit increase in A’ from OFF to ON smoking. CO ppm differences did not predict performance enhancements on any other trial type (identical art: `r coefs_aprime_by_ppm %>% filter(exptCond == "control", probe == "art") %>% pull(txt_apa_2)`; identical room: `r coefs_aprime_by_ppm %>% filter(exptCond == "control", probe == "room") %>% pull(txt_apa_2)`; similar art: `r coefs_aprime_by_ppm %>% filter(exptCond == "relational", probe == "art") %>% pull(txt_apa_2)`). Direct comparison showed that the partial Pearson correlation between CO ppm difference and A’ difference ON - OFF smoking for similar room trials was marginally higher than than the partial Pearson correlations for the other three trial types (similar room > identical art: `r pcor_diff_aprime_by_ppm %>% filter(metric_type == "ia") %>% pull(txt_apa)`; similar room > identical room: `r pcor_diff_aprime_by_ppm %>% filter(metric_type == "ir") %>% pull(txt_apa)`; similar room > similar art: `r pcor_diff_aprime_by_ppm %>% filter(metric_type == "sa") %>% pull(txt_apa)`).
-
-Indeed, we found a modest positive correlation between these measures for the similar room task (`r coefs_aprime_by_ppm %>% filter(exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`; `r pcor_aprime_by_ppm %>% filter(exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`), such that a CO increase of 1 ppm from OFF to ON smoking predicted a 0.0129 unit increase in A’ from OFF to ON smoking (**Figure 6**). CO ppm differences did not predict performance enhancements on any other trial type (identical art: `r coefs_aprime_by_ppm %>% filter(exptCond == "control", probe == "art") %>% pull(txt_apa_2)`; identical room: `r coefs_aprime_by_ppm %>% filter(exptCond == "control", probe == "room") %>% pull(txt_apa_2)`; similar art: `r coefs_aprime_by_ppm %>% filter(exptCond == "relational", probe == "art") %>% pull(txt_apa_2)`). Direct comparison showed that the partial Pearson correlation between CO ppm difference and A’ difference ON - OFF smoking for similar room trials was marginally higher than the partial Pearson correlations for the other three trial types (similar room > identical art: `r pcor_diff_aprime_by_ppm %>% filter(metric_type == "ia") %>% pull(txt_apa)`; similar room > identical room: `r pcor_diff_aprime_by_ppm %>% filter(metric_type == "ir") %>% pull(txt_apa)`; similar room > similar art: `r pcor_diff_aprime_by_ppm %>% filter(metric_type == "sa") %>% pull(txt_apa)`).
+Indeed, we found a modest positive correlation between these measures for the similar room task (`r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`; `r pcor_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`), such that a CO increase of 1 ppm from OFF to ON smoking predicted a `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "room") %>% pull(raw)` unit increase in A’ from OFF to ON smoking (**Figure 6**). CO ppm differences did not predict performance enhancements on any other trial type (identical art: `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "control", probe == "art") %>% pull(txt_apa_2)`; identical room: `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "control", probe == "room") %>% pull(txt_apa_2)`; similar art: `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "art") %>% pull(txt_apa_2)`). Direct comparison showed that the partial Pearson correlation between CO ppm difference and A’ difference ON - OFF smoking for similar room trials was marginally higher than the partial Pearson correlations for the other three trial types (similar room > identical art: `r pcor_diff_aprime_by_ppm %>% filter(perf_metric_type == "aprime", metric_type == "ia") %>% pull(txt_apa)`; similar room > identical room: `r pcor_diff_aprime_by_ppm %>% filter(perf_metric_type == "aprime", metric_type == "ir") %>% pull(txt_apa)`; similar room > similar art: `r pcor_diff_aprime_by_ppm %>% filter(perf_metric_type == "aprime", metric_type == "sa") %>% pull(txt_apa)`).
 
 ## Not exactly in the main text
 
