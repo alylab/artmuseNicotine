@@ -53,3 +53,4 @@ cigs_12hr_s2 - how many cigarettes the participant reported smoking in the 12 ho
 cigs_1hr_s2 - how many cigarettes the participant reported smoking in the last hour prior to their second session
 cigs_per_day_est - average amount of cigarettes each participant reported smoking per day
 ftnd - each participants score on the Fagerstrom Test for Nicotine Dependence
+years_smoke - how many years the participant reported smoking
