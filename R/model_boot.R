@@ -16,7 +16,7 @@ boots_by_subj <- raw %>%
   mutate(corResp = recode(corResp, `0` = "fa", `1` = "hit"),
          on_smoking = recode(on_smoking, `0` = "off", `1` = "on"),
          exptCond = recode(exptCond, `0` = "control", `1` = "relational")) %>%
-  nest(trials = -c(subj_num, ppm, on_smoking, exptCond, probe, corResp)) %>%
+  nest(trials = -c(subj_num, ppm, years_smoke, on_smoking, exptCond, probe, corResp)) %>%
   nest(conditions = -subj_num) %>%
   nest(subjects = everything()) %>%
   # the each arg sets the number of iterations, my friends!
@@ -49,7 +49,7 @@ aprime_by_ppm <- raw %>%
   mutate(corResp = recode(corResp, `0` = "fa", `1` = "hit"),
          on_smoking = recode(on_smoking, `0` = "off", `1` = "on"),
          exptCond = recode(exptCond, `0` = "control", `1` = "relational")) %>%
-  group_by(subj_num, ppm, on_smoking, exptCond, probe, corResp) %>%
+  group_by(subj_num, ppm, years_smoke, on_smoking, exptCond, probe, corResp) %>%
   summarize(rate = mean(resp)) %>%
   ungroup() %>% 
   pivot_wider(names_from = corResp, values_from = rate, names_prefix = "rate_") %>%
@@ -78,8 +78,10 @@ aprime_by_ppm <- raw %>%
                                 select(ppm_diff_resid = .resid)),
          data = pmap(list(data, resid_value_diff, resid_ppm_diff),
                      function(a, b, c) {bind_cols(a, b, c)}),
-         model = map(data, ~lm(value_diff ~ value_off_c + ppm_diff, data = .x)),
-         augs = map(model, ~.x %>%
+         model_main = map(data, ~lm(value_diff ~ value_off_c + ppm_diff, data = .x)),
+         model_covar = map(data, ~lm(value_diff ~ value_off_c + ppm_diff + years_smoke, data = .x)),
+         model_diffonly = map(data, ~lm(value_diff ~ ppm_diff, data = .x)),
+         augs = map(model_main, ~.x %>%
                       broom::augment() %>%
                       select(value_diff_fit = .fitted)),
          resid_augs = map(data, ~lm(value_diff_resid ~ ppm_diff_resid, data = .x) %>%
@@ -107,14 +109,22 @@ aprime_by_ppm_boot <- boots_by_subj %>%
   mutate(resid_value_diff = map(data, ~lm(value_diff ~ value_off_c, data = .x) %>% broom::augment() %>% select(value_diff_resid = .resid)),
          resid_ppm_diff = map(data, ~lm(ppm_diff ~ value_off_c, data = .x) %>% broom::augment() %>% select(ppm_diff_resid = .resid)),
          data = pmap(list(data, resid_value_diff, resid_ppm_diff), function(a, b, c) {bind_cols(a, b, c)}),
-         model = map(data, ~lm(value_diff ~ value_off_c + ppm_diff, data = .x)),
          model_resid = map(data, ~lm(value_diff_resid ~ ppm_diff_resid, data = .x)),
-         coefs = map(data, ~lm(value_diff ~ value_off_c + ppm_diff, data = .x) %>%
+         coefs_main = map(data, ~lm(value_diff ~ value_off_c + ppm_diff, data = .x) %>%
                        broom::tidy()),
-         coefs_unadj = map(data, ~lm(value_diff ~ ppm_diff, data = .x) %>%
+         coefs_covar = map(data, ~lm(value_diff ~ value_off_c + ppm_diff + years_smoke, data = .x) %>% 
+                             broom::tidy()),
+         coefs_diffonly = map(data, ~lm(value_diff ~ ppm_diff, data = .x) %>%
                              broom::tidy())) %>%
   left_join(aprime_by_ppm %>%
-              select(metric_type, exptCond, probe, data_raw = data, coefs_raw = model) %>%
+              select(metric_type,
+                     exptCond,
+                     probe,
+                     data = data,
+                     coefs_main = model_main,
+                     coefs_covar = model_covar,
+                     coefs_diffonly = model_diffonly,
+                     suffix = c("_boot", "_raw")) %>%
               mutate(coefs_raw = map(coefs_raw,
                                      ~broom::tidy(.) %>%
                                        rename_if(is.numeric, ~paste0(., "_raw")))),
@@ -126,7 +136,7 @@ aprime_by_ppm_boot <- boots_by_subj %>%
          data_raw = map2(data_raw, predicted_resid,
                          ~.x %>%
                            mutate(obs = 1:nrow(.), predicted = .y))) %>%
-  select(-ends_with("resid"), -data)
+  select(-ends_with("resid"), -data_boot)
 
 ## finish up ----
 
