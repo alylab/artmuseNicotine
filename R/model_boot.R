@@ -12,7 +12,7 @@ load(paste(stats_dir, "raw.rda", sep = "/"))
 
 boots_by_subj <- raw %>%
   filter(valid == 1) %>%
-  select(-c(valid, session_num, condition, cue)) %>%
+  select(-c(valid, session_num, session_order, cue)) %>%
   mutate(corResp = recode(corResp, `0` = "fa", `1` = "hit"),
          on_smoking = recode(on_smoking, `0` = "off", `1` = "on"),
          exptCond = recode(exptCond, `0` = "control", `1` = "relational")) %>%
@@ -120,15 +120,15 @@ aprime_by_ppm_boot <- boots_by_subj %>%
               select(metric_type,
                      exptCond,
                      probe,
-                     data = data,
+                     data,
                      coefs_main = model_main,
                      coefs_covar = model_covar,
-                     coefs_diffonly = model_diffonly,
-                     suffix = c("_boot", "_raw")) %>%
-              mutate(coefs_raw = map(coefs_raw,
+                     coefs_diffonly = model_diffonly) %>%
+              mutate(coefs_main = map(coefs_main,
                                      ~broom::tidy(.) %>%
                                        rename_if(is.numeric, ~paste0(., "_raw")))),
-            by = c("metric_type", "exptCond", "probe")) %>%
+            by = c("metric_type", "exptCond", "probe"),
+            suffix = c("_boot", "_raw")) %>%
   mutate(predicted_resid = map2(data_raw, model_resid,
                                 ~.x %>%
                                   select(ppm_diff_resid) %>%
