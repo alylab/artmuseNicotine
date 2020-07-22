@@ -49,7 +49,7 @@ aprime_by_ppm <- sdt_metrics %>%
   pivot_longer(cols = c(rate_hit, rate_fa, aprime),
                names_to = "metric_type",
                values_to = "value") %>% 
-  pivot_wider(names_from = on_smoking, values_from = c(value, ppm)) %>% 
+  pivot_wider(names_from = on_smoking, values_from = value, names_prefix = "value_") %>% 
   left_join(demos %>% 
               select(subj_num, ppm_on, ppm_off, years_smoke),
             by = "subj_num") %>% 
@@ -65,19 +65,32 @@ aprime_by_ppm <- sdt_metrics %>%
   # for sussing out regression to the mean
   mutate(rank_value_off = 1:n()) %>%
   nest(data = -c(metric_type, exptCond, probe)) %>%
-  mutate(resid_value_diff = map(data, ~lm(value_diff ~ value_off_c, data = .x) %>%
+  mutate(model_type = map(metric_type, ~c("main", "covar", "diffonly"))) %>% 
+  unchop(model_type) %>% 
+  mutate(regressors = recode(model_type,
+                             main = "value_off_c",
+                             covar = "value_off_c + years_smoke",
+                             diffonly = "1"),
+         data = map_if(data, model_type == "covar",
+                       ~.x %>% 
+                         filter(!is.na(years_smoke)),
+                       .else = ~.x),
+         resid_value_diff = map2(data, regressors,
+                                 ~lm(as.formula(paste0("value_diff ~ ", .y)),
+                                          data = .x) %>%
                                    broom::augment() %>%
                                    select(value_diff_resid = .resid)),
-         resid_ppm_diff = map(data, ~lm(ppm_diff ~ value_off_c, data = .x) %>%
+         resid_ppm_diff = map2(data, regressors,
+                               ~lm(as.formula(paste0("ppm_diff ~ ", .y)),
+                                              data = .x) %>%
                                 broom::augment() %>%
                                 select(ppm_diff_resid = .resid)),
          data = pmap(list(data, resid_value_diff, resid_ppm_diff),
                      function(a, b, c) {bind_cols(a, b, c)}),
-         model_main = map(data, ~lm(value_diff ~ value_off_c + ppm_diff, data = .x)),
-         model_covar = map(data, ~lm(value_diff ~ value_off_c + ppm_diff + years_smoke, data = .x)),
-         model_diffonly = map(data, ~lm(value_diff ~ ppm_diff, data = .x)),
+         model = map2(data, regressors,
+                      ~lm(as.formula(paste0("value_diff ~ ppm_diff + ", .y)), data = .x)),
          # the augmented residual extraction stuff is for plotting partial correlation stuff
-         augs = map(model_main, ~.x %>%
+         augs = map(model, ~.x %>%
                       broom::augment() %>%
                       select(value_diff_fit = .fitted)),
          resid_augs = map(data, ~lm(value_diff_resid ~ ppm_diff_resid, data = .x) %>%
@@ -102,27 +115,41 @@ aprime_by_ppm_boot <- boots_by_subj %>%
          # because 0.5 is chance in a balanced 2-choice task
          value_off_c = value_off - 0.5) %>%
   nest(data = -c(iteration, metric_type, exptCond, probe)) %>%
-  mutate(resid_value_diff = map(data, ~lm(value_diff ~ value_off_c, data = .x) %>% broom::augment() %>% select(value_diff_resid = .resid)),
-         resid_ppm_diff = map(data, ~lm(ppm_diff ~ value_off_c, data = .x) %>% broom::augment() %>% select(ppm_diff_resid = .resid)),
-         data = pmap(list(data, resid_value_diff, resid_ppm_diff), function(a, b, c) {bind_cols(a, b, c)}),
-         model_resid = map(data, ~lm(value_diff_resid ~ ppm_diff_resid, data = .x)),
-         coefs_main = map(data, ~lm(value_diff ~ value_off_c + ppm_diff, data = .x) %>%
-                       broom::tidy()),
-         coefs_covar = map(data, ~lm(value_diff ~ value_off_c + ppm_diff + years_smoke, data = .x) %>% 
-                             broom::tidy()),
-         coefs_diffonly = map(data, ~lm(value_diff ~ ppm_diff, data = .x) %>%
-                             broom::tidy())) %>%
+  mutate(model_type = map(metric_type, ~c("main", "covar", "diffonly"))) %>% 
+  unchop(model_type) %>% 
+  mutate(regressors = recode(model_type,
+                             main = "value_off_c",
+                             covar = "value_off_c + years_smoke",
+                             diffonly = "1"),
+         data = map_if(data, model_type == "covar",
+                       ~.x %>% 
+                         filter(!is.na(years_smoke)),
+                       .else = ~.x),
+         resid_value_diff = map2(data, regressors,
+                                 ~lm(as.formula(paste0("value_diff ~ ", .y)),
+                                     data = .x) %>%
+                                   broom::augment() %>%
+                                   select(value_diff_resid = .resid)),
+         resid_ppm_diff = map2(data, regressors,
+                               ~lm(as.formula(paste0("ppm_diff ~ ", .y)),
+                                   data = .x) %>%
+                                 broom::augment() %>%
+                                 select(ppm_diff_resid = .resid)),
+         data = pmap(list(data, resid_value_diff, resid_ppm_diff),
+                     function(a, b, c) {bind_cols(a, b, c)}),
+         coefs = map2(data, regressors,
+                      ~lm(as.formula(paste0("value_diff ~ ppm_diff + ", .y)), data = .x) %>% 
+                        broom::tidy()),
+model_resid = map(data, ~lm(value_diff_resid ~ ppm_diff_resid, data = .x))) %>%
   left_join(aprime_by_ppm %>%
               select(metric_type,
+                     model_type,
                      exptCond,
                      probe,
                      data,
-                     coefs_main = model_main,
-                     coefs_covar = model_covar,
-                     coefs_diffonly = model_diffonly) %>%
-              mutate_at(vars(starts_with("coefs")),
-                        ~map(., ~broom::tidy(.x))),
-            by = c("metric_type", "exptCond", "probe"),
+                     coefs = model) %>%
+              mutate(coefs = map(coefs, ~broom::tidy(.x))),
+            by = c("metric_type", "model_type", "exptCond", "probe"),
             suffix = c("_boot", "_raw")) %>%
   mutate(predicted_resid = map2(data_raw, model_resid,
                                 ~.x %>%
