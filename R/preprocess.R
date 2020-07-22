@@ -76,4 +76,4 @@ sdt_metrics <- raw %>%
 
 ## finish it up ----
 
-save(raw, sdt_metrics, file = paste(stats_dir, "raw.rda", sep = "/"))
+save(raw, demos, sdt_metrics, file = paste(stats_dir, "raw.rda", sep = "/"))
