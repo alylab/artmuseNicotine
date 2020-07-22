@@ -44,20 +44,15 @@ boots_by_subj <- raw %>%
 
 ## make aprime_by_ppm (regression on the RAW data) ----
 
-aprime_by_ppm <- raw %>%
-  filter(valid == 1) %>%
-  mutate(corResp = recode(corResp, `0` = "fa", `1` = "hit"),
-         on_smoking = recode(on_smoking, `0` = "off", `1` = "on"),
-         exptCond = recode(exptCond, `0` = "control", `1` = "relational")) %>%
-  group_by(subj_num, ppm, years_smoke, on_smoking, exptCond, probe, corResp) %>%
-  summarize(rate = mean(resp)) %>%
-  ungroup() %>% 
-  pivot_wider(names_from = corResp, values_from = rate, names_prefix = "rate_") %>%
-  mutate(aprime = sdt_aprime(rate_hit, rate_fa)) %>% 
+aprime_by_ppm <- sdt_metrics %>% 
+  select(subj_num, on_smoking, exptCond, probe = cue, rate_hit, rate_fa, aprime) %>% 
   pivot_longer(cols = c(rate_hit, rate_fa, aprime),
                names_to = "metric_type",
                values_to = "value") %>% 
   pivot_wider(names_from = on_smoking, values_from = c(value, ppm)) %>% 
+  left_join(demos %>% 
+              select(subj_num, ppm_on, ppm_off, years_smoke),
+            by = "subj_num") %>% 
   mutate(ppm_diff = ppm_on - ppm_off,
          value_diff = value_on - value_off,
          # luckily for us, centering at 0.5 is relatively interpretable
@@ -81,6 +76,7 @@ aprime_by_ppm <- raw %>%
          model_main = map(data, ~lm(value_diff ~ value_off_c + ppm_diff, data = .x)),
          model_covar = map(data, ~lm(value_diff ~ value_off_c + ppm_diff + years_smoke, data = .x)),
          model_diffonly = map(data, ~lm(value_diff ~ ppm_diff, data = .x)),
+         # the augmented residual extraction stuff is for plotting partial correlation stuff
          augs = map(model_main, ~.x %>%
                       broom::augment() %>%
                       select(value_diff_fit = .fitted)),
