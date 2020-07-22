@@ -124,8 +124,8 @@ aprime_by_ppm_boot <- boots_by_subj %>%
                      coefs_main = model_main,
                      coefs_covar = model_covar,
                      coefs_diffonly = model_diffonly) %>%
-              mutate(coefs_main = map(coefs_main,
-                                     ~broom::tidy(.))),
+              mutate_at(vars(starts_with("coefs")),
+                        ~map(., ~broom::tidy(.x))),
             by = c("metric_type", "exptCond", "probe"),
             suffix = c("_boot", "_raw")) %>%
   mutate(predicted_resid = map2(data_raw, model_resid,
