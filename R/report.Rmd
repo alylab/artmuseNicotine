@@ -18,6 +18,9 @@ source(here::here("R", "paths.R"))
 load(paste(stats_dir,"preplots_rstanarm.rda", sep = "/"))
 load(paste(stats_dir,"preplots_rt_rstanarm.rda", sep = "/"))
 load(paste(stats_dir, "aprime_by_ppm.rda", sep = "/"))
+load(paste(stats_dir, "pca.rda", sep = "/"))
+
+figures_dir <- here::here("ignore", "figures")
 
 this_theme <- function (...) {
   
@@ -77,7 +80,7 @@ x <- preplots_params %>%
 x
 
 x %>%
-  ggsave("ignore/figures/minor_plot_2x2x2_coefs.png",
+  ggsave(paste(figures_dir, "minor_plot_2x2x2_coefs.png", sep = "/"),
          plot = .,
          device = "png",
          width = 7,
@@ -125,7 +128,7 @@ x <- preplots_raw_bysubj %>%
 x
 
 x %>%
-  ggsave(filename = "ignore/figures/major_plot_nick.png",
+  ggsave(filename = paste(figures_dir, "major_plot_nick.png", sep = "/"),
        plot = .,
        device = "png",
        width = 7,
@@ -133,7 +136,7 @@ x %>%
        units = "in")
 
 (x + theme(panel.grid = element_blank())) %>%
-  ggsave(filename = "ignore/figures/major_plot_nick_grid_none.png",
+  ggsave(filename = paste(figures_dir, "major_plot_nick_grid_none.png", sep = "/"),
        plot = .,
        device = "png",
        width = 7,
@@ -141,7 +144,7 @@ x %>%
        units = "in")
 
 (x + theme(panel.grid.minor = element_blank())) %>%
-  ggsave(filename = "ignore/figures/major_plot_nick_grid_minimal.png",
+  ggsave(filename = paste(figures_dir, "major_plot_nick_grid_minimal.png", sep = "/"),
        plot = .,
        device = "png",
        width = 7,
@@ -153,21 +156,22 @@ x %>%
 
 ```{r major-plot-aprime-ppm-boot}
 x <- aprime_by_ppm_boot %>%
+  filter(metric_type == "aprime") %>% 
   select(iteration, exptCond, probe, data_raw) %>%
   unnest(data_raw) %>%
   mutate(exptCond = recode(exptCond, control = "identical", relational = "similar")) %>%
-  group_by(exptCond, probe, obs, ppm_diff, aprime_diff, aprime_diff_fit) %>%
+  group_by(exptCond, probe, obs, ppm_diff, value_diff, value_diff_fit) %>%
   summarize(boot_median = median(predicted),
             boot_q025 = quantile(predicted, .025),
             boot_q975 = quantile(predicted, .975)) %>%
   mutate(rel_room = if_else(exptCond == "similar" & probe == "room", TRUE, FALSE)) %>%
-  ggplot(aes(x = ppm_diff, y = aprime_diff,
+  ggplot(aes(x = ppm_diff, y = value_diff,
              color = interaction(exptCond, probe),
              fill = interaction(exptCond, probe))) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm", formula = y ~ x, size = 1, alpha = 0.3) +
   geom_text(aes(label = this_label),
-            data = crossing(ppm_diff = 7.5, aprime_diff = -.18,
+            data = crossing(ppm_diff = 7.5, value_diff = -.18,
                             exptCond = c("identical", "similar"), probe = c("art", "room")) %>%
               mutate(this_label = if_else(exptCond == "similar" & probe == "room", "*", "")),
             size = 10, color = "black") +
@@ -182,7 +186,7 @@ x <- aprime_by_ppm_boot %>%
 x
 
 x %>%
-  ggsave(filename = "ignore/figures/major_plot_aprime_by_ppm_grid_all.png",
+  ggsave(filename = paste(figures_dir, "major_plot_aprime_by_ppm_grid_all.png", sep = "/"),
        plot = .,
        device = "png",
        width = 6,
@@ -190,7 +194,7 @@ x %>%
        units = "in")
 
 (x + theme(panel.grid = element_blank())) %>%
-  ggsave(filename = "ignore/figures/major_plot_aprime_by_ppm_grid_none.png",
+  ggsave(filename = paste(figures_dir, "major_plot_aprime_by_ppm_grid_none.png", sep = "/"),
        plot = .,
        device = "png",
        width = 6,
@@ -198,7 +202,7 @@ x %>%
        units = "in")
 
 (x + theme(panel.grid.minor = element_blank())) %>%
-  ggsave(filename = "ignore/figures/major_plot_aprime_by_ppm_grid_minimal.png",
+  ggsave(filename = paste(figures_dir, "major_plot_aprime_by_ppm_grid_minimal.png", sep = "/"),
        plot = .,
        device = "png",
        width = 6,
@@ -265,7 +269,7 @@ x <- preplots_fixef %>%
 x
 
 x %>%
-  ggsave(filename = "ignore/figures/minor_plot_nick_truncated.png",
+  ggsave(filename = paste(figures_dir, "minor_plot_nick_truncated.png", sep = "/"),
        plot = .,
        device = "png",
        width = 5,
@@ -273,7 +277,7 @@ x %>%
        units = "in")
 
 (x + theme(panel.grid = element_blank())) %>%
-  ggsave(filename = "ignore/figures/minor_plot_nick_truncated_grid_none.png",
+  ggsave(filename = paste(figures_dir, "minor_plot_nick_truncated_grid_none.png", sep = "/"),
        plot = .,
        device = "png",
        width = 5,
@@ -281,7 +285,7 @@ x %>%
        units = "in")
 
 (x + theme(panel.grid.minor = element_blank())) %>%
-  ggsave(filename = "ignore/figures/minor_plot_nick_truncated_grid_minimal.png",
+  ggsave(filename = paste(figures_dir, "minor_plot_nick_truncated_grid_minimal.png", sep = "/"),
        plot = .,
        device = "png",
        width = 5,
@@ -359,6 +363,27 @@ aprime_by_ppm_boot %>%
 
 Note for the above plots: The bootstrapped sampling distributions for the intercept and off-smoking A' terms are not centered on the observed values. What's happening? Basically, the people with shitty off-smoking A' and a huge improvement in A', AND the people with great off-smoking A' and a huge reduction in A', are more likely to get bootstrap-resampled with relatively extreme values (sort of like... reverse regression to the mean), driving the center of the bootstrap distribution of the A' off predictor higher. Additionally, intercepts and A' off slopes are correlated in the bootstrap distribution because the convergence point of the lines is above chance A'.
 
+### Supplemental figures
+
+```{r}
+x <- pca_nicotine %>%
+  factoextra::fviz_pca_var(repel = TRUE) +
+  labs(title = "Principal components analysis of nicotine use variables",
+       subtitle = "Variable correlation plot") +
+  this_theme()
+
+x
+
+x %>%
+  ggsave(filename = paste(figures_dir, "supp_plot_pca.png", sep = "/"),
+       plot = .,
+       device = "png",
+       width = 5,
+       height = 5,
+       units = "in")
+```
+
+
 # Nice-looking results!
 
 Outside of minor content and formatting edits to the body text that I may have missed, the content below should render all of the statistics reported in the paper.
@@ -393,8 +418,8 @@ summarize_report <- function (data, col, ..., stat_name = "", unit_name = "", di
   }
   data %<>%
     summarize(avg = mean(value),
-              q025 = quantile(value, .025),
-              q975 = quantile(value, .975)) %>% 
+              q025 = quantile(value, .025, na.rm = T),
+              q975 = quantile(value, .975, na.rm = T)) %>% 
     mutate_at(c("avg", "q025", "q975"), ~formatC(signif(., digits = digs), digits = digs, format = "fg", flag = "#", mode = "double")) %>%
     mutate(txt_apa = pmap_chr(list(avg, q025, q975),
                               function (a, b, c) {glue::glue(glue_in)}
@@ -610,16 +635,18 @@ rts_smoking_exptCond_probe <- preplots_rt_fixef %>%
 
 _Comparison of ON vs OFF smoking sessions._ We then turned to how performance on these tasks might be modulated by nicotine (**Figure 5**). We did not find a main effect of smoking session on A’, (`r get_coefs("full", "corResp:on_smoking")`; `r aprimes_2x2x2_smoking$txt_apa`), suggesting that across trial types, A’ was not consistently higher during the ON session than the OFF session. We also did not find a main effect of smoking session on log-RTs (`r get_coefs("full", "on_smoking", coefs_rt)`; `r rts_2x2x2_smoking$txt_apa`).
 
-Next, we interrogated task-dependent effects of nicotine on performance. Because we initially hypothesized that nicotine would preferentially improve performance on similar room trials, we also examined two-way interactions between smoking session and condition (identical vs. similar) and smoking session and attentional state (art vs. room) on performance. We did not find a two-way interaction effect of smoking session and condition on A’ (`r get_coefs("full", "corResp:on_smoking:exptCond")`) or log-RT (`r get_coefs("full", "on_smoking:exptCond", coefs_rt)`), nor did we find a two-way interaction effect of smoking session and attentional state on A’ (`r get_coefs("full", "corResp:probe:on_smoking")`) or log-RT (`r get_coefs("full", "probe:on_smoking", coefs_rt)`).
+Next, we interrogated task-dependent effects of nicotine on performance. Because we initially hypothesized that nicotine would preferentially improve performance on similar room trials, we also examined two-way interactions between smoking session and condition (identical vs. similar) and smoking session and attentional state (art vs. room) on performance. We did not find a two-way interaction effect of smoking session and condition on A’ (`r get_coefs("full", "corResp:on_smoking:exptCond")`) or log-RT (`r get_coefs("full", "on_smoking:exptCond", coefs_rt)`), nor did we find a two-way interaction effect of smoking session and attentional state on A’ (`r get_coefs("full", "corResp:probe:on_smoking")`) or log-RT (`r get_coefs("full", "probe:on_smoking", coefs_rt)`). Finally, an exploratory analysis examining hits and false alarms separately (rather than combined in an A’ score) also failed to show any differences as a function of ON vs OFF smoking sessions.
 
-```{r, echo = FALSE}
+```{r aprime-by-ppm-stuff, echo = FALSE}
 coefs_aprime_by_ppm <- aprime_by_ppm_boot %>%
-  mutate(coefs = map2(coefs, coefs_raw, ~full_join(.x, .y, by = "term"))) %>%
-  select(iteration, metric_type, exptCond, probe, coefs) %>%
+  select(iteration, metric_type, exptCond, probe, starts_with("coefs")) %>%
+  pivot_longer(cols = starts_with("coefs"), names_to = c("model_type", ".value"), names_pattern = c("coefs_(.*)_(.*)")) %>% 
+  mutate(raw = map(raw, ~rename_if(.x, is.numeric, ~paste0(., "_raw")))) %>% 
+  mutate(coefs = map2(boot, raw, ~full_join(.x, .y, by = "term"))) %>% 
+  select(-boot, -raw) %>% 
   unnest(coefs) %>%
   rename(raw = "estimate_raw", perf_metric_type = "metric_type") %>%
-  filter(term == "ppm_diff") %>%
-  summarize_report(estimate, perf_metric_type, exptCond, probe, raw,
+  summarize_report(estimate, perf_metric_type, model_type, exptCond, probe, term, raw,
                    stat_name = "beta", unit_name = "ppm units") %>%
   ungroup() %>%
   select(-metric_type) %>% 
@@ -657,9 +684,17 @@ _Supplementary Models of Performance._ The above analyses model the task as a 2 
 
 _Individual Differences._ The above analyses treat smoking as a binary variable: they simply compared the ON and OFF smoking sessions. However, more precise information is available about individuals’ smoking, because for each session we obtained measures of expired breath carbon monoxide (CO) parts-per-million (ppm). This tells us how recently or how much an individual smoked, allowing us to investigate possible dose-dependent effects of nicotine smoking (e.g., Vollstädt-Klein et al., 2011; Vossel, Warbrick, Mobascher, Winterer, & Fink, 2011). If nicotine smoking enhances attentional performance, then the individuals who show the greatest CO ppm difference (in the ON vs. OFF smoking session) should show the greatest performance enhancements (in the ON vs. OFF smoking session). To investigate this, we ran four independent, between-participants linear regressions predicting A’ difference as a function of CO ppm difference (ON vs. OFF), with one regression for each task: identical art, identical room, similar art, and similar room.
 
-**Figure 6.** Dose-dependent effects of nicotine smoking on behavioral sensitivity (A’). On similar room trials (bottom right), participants who showed a greater increase in CO ppm from the OFF to the ON smoking session showed larger increases in A’ from the OFF to the ON smoking session. Participants did not show such an effect for identical art, identical room, or similar art trials. Within each panel, each point represents one participant; each participant appears in all four panels. Heavy lines and error ribbons indicate line of best fit +- 95% confidence interval for ON-OFF A' difference vs. ON-OFF CO ppm difference, displayed without adjusting for A' OFF smoking for simplicity. * bootstrapped p < .05.
+**Figure 6.** Dose-dependent effects of nicotine smoking on behavioral sensitivity (A’). On similar room trials (bottom right), participants who showed a greater increase in CO ppm from the OFF to the ON smoking session showed larger increases in A’ from the OFF to the ON smoking session. Participants did not show such an effect for identical art, identical room, or similar art trials. Within each panel, each point represents one participant; each participant appears in all four panels. Heavy lines and error ribbons indicate line of best fit +- 95% confidence interval for ON-OFF A' difference vs. ON-OFF CO ppm difference, displayed without adjusting for A' OFF smoking for simplicity. Results are visually indistinguishable when adjusting for A' OFF smoking. * bootstrapped p < .05.
 
-Indeed, we found a modest positive correlation between these measures for the similar room task (`r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`; `r pcor_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`), such that a CO increase of 1 ppm from OFF to ON smoking predicted a `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "room") %>% pull(raw)` unit increase in A’ from OFF to ON smoking (**Figure 6**). CO ppm differences did not predict performance enhancements on any other trial type (identical art: `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "control", probe == "art") %>% pull(txt_apa_2)`; identical room: `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "control", probe == "room") %>% pull(txt_apa_2)`; similar art: `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "art") %>% pull(txt_apa_2)`). Direct comparison showed that the partial Pearson correlation between CO ppm difference and A’ difference ON - OFF smoking for similar room trials was marginally higher than the partial Pearson correlations for the other three trial types (similar room > identical art: `r pcor_diff_aprime_by_ppm %>% filter(perf_metric_type == "aprime", metric_type == "ia") %>% pull(txt_apa)`; similar room > identical room: `r pcor_diff_aprime_by_ppm %>% filter(perf_metric_type == "aprime", metric_type == "ir") %>% pull(txt_apa)`; similar room > similar art: `r pcor_diff_aprime_by_ppm %>% filter(perf_metric_type == "aprime", metric_type == "sa") %>% pull(txt_apa)`).
+Indeed, we found a modest positive correlation between these measures for the similar room task (`r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "room", term == "ppm_diff") %>% pull(txt_apa_2)`; `r pcor_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`), such that a CO increase of 1 ppm from OFF to ON smoking predicted a `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "room", term == "ppm_diff") %>% pull(raw)` unit increase in A’ from OFF to ON smoking (**Figure 6**). CO ppm differences did not predict performance enhancements on any other trial type (identical art: `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "control", probe == "art", term == "ppm_diff") %>% pull(txt_apa_2)`; identical room: `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "control", probe == "room", term == "ppm_diff") %>% pull(txt_apa_2)`; similar art: `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "art", term == "ppm_diff") %>% pull(txt_apa_2)`). Direct comparison showed that the partial Pearson correlation between CO ppm difference and A’ difference ON - OFF smoking for similar room trials was marginally higher than the partial Pearson correlations for the other three trial types (similar room > identical art: `r pcor_diff_aprime_by_ppm %>% filter(perf_metric_type == "aprime", metric_type == "ia") %>% pull(txt_apa)`; similar room > identical room: `r pcor_diff_aprime_by_ppm %>% filter(perf_metric_type == "aprime", metric_type == "ir") %>% pull(txt_apa)`; similar room > similar art: `r pcor_diff_aprime_by_ppm %>% filter(perf_metric_type == "aprime", metric_type == "sa") %>% pull(txt_apa)`).
+
+Finally, an exploratory analysis examining hits and false alarms separately (rather than combined in an A' score) revealed that the smoking-related improvements on similar room trials were mostly driven by a reduction in false alarm rates (`r coefs_aprime_by_ppm %>% filter(metric_type == "rate_fa", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`) rather than a change in hit rates (`r coefs_aprime_by_ppm %>% filter(metric_type == "rate_hit", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`). This result is broadly consistent with studies showing that nicotine can selectively reduce false alarms while not affecting hit rates ([Barr et al., 2007](https://www.nature.com/articles/1301423); [Jubelt et al., 2014](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4078257/)), and nicotinic antagonists can increase false alarms with minimal effects on hits ([Newhouse, Potter, Corwin, & Lenox, 1992](https://link.springer.com/article/10.1007/BF02247425)). However, we made no a priori predictions about hit and false alarm rates, so this pattern of results should be replicated in future studies.
+
+## Supplemental results
+
+### Self-reported nicotine use covariates
+
+
 
 ## Not exactly in the main text
 
