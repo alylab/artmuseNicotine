@@ -19,6 +19,7 @@ load(paste(stats_dir,"preplots_rstanarm.rda", sep = "/"))
 load(paste(stats_dir,"preplots_rt_rstanarm.rda", sep = "/"))
 load(paste(stats_dir, "aprime_by_ppm.rda", sep = "/"))
 load(paste(stats_dir, "pca.rda", sep = "/"))
+load(paste(stats_dir, "models_anova.rda", sep = "/"))
 
 figures_dir <- here::here("ignore", "figures")
 
@@ -417,7 +418,7 @@ summarize_report <- function (data, col, ..., stat_name = "", unit_name = "", di
     data %<>% group_by(metric_type)
   }
   data %<>%
-    summarize(avg = mean(value),
+    summarize(avg = mean(value, na.rm = T),
               q025 = quantile(value, .025, na.rm = T),
               q975 = quantile(value, .975, na.rm = T)) %>% 
     mutate_at(c("avg", "q025", "q975"), ~formatC(signif(., digits = digs), digits = digs, format = "fg", flag = "#", mode = "double")) %>%
@@ -639,11 +640,10 @@ Next, we interrogated task-dependent effects of nicotine on performance. Because
 
 ```{r aprime-by-ppm-stuff, echo = FALSE}
 coefs_aprime_by_ppm <- aprime_by_ppm_boot %>%
-  select(iteration, metric_type, exptCond, probe, starts_with("coefs")) %>%
-  pivot_longer(cols = starts_with("coefs"), names_to = c("model_type", ".value"), names_pattern = c("coefs_(.*)_(.*)")) %>% 
-  mutate(raw = map(raw, ~rename_if(.x, is.numeric, ~paste0(., "_raw")))) %>% 
-  mutate(coefs = map2(boot, raw, ~full_join(.x, .y, by = "term"))) %>% 
-  select(-boot, -raw) %>% 
+  select(iteration, model_type, metric_type, exptCond, probe, starts_with("coefs")) %>%
+  mutate(coefs_raw = map(coefs_raw, ~rename_if(.x, is.numeric, ~paste0(., "_raw")))) %>% 
+  mutate(coefs = map2(coefs_boot, coefs_raw, ~full_join(.x, .y, by = "term"))) %>% 
+  select(-coefs_boot, -coefs_raw) %>% 
   unnest(coefs) %>%
   rename(raw = "estimate_raw", perf_metric_type = "metric_type") %>%
   summarize_report(estimate, perf_metric_type, model_type, exptCond, probe, term, raw,
@@ -655,21 +655,21 @@ coefs_aprime_by_ppm <- aprime_by_ppm_boot %>%
          txt_apa_2 = glue::glue("beta = {raw} ppm units, bootstrapped 95% CI [{q025}, {q975}]"))
 
 pcor_aprime_by_ppm <- aprime_by_ppm_boot %>%
-  select(iteration, metric_type, exptCond, probe, starts_with("resid")) %>%
+  select(iteration, model_type, metric_type, exptCond, probe, starts_with("resid")) %>%
   unnest(c(resid_value_diff, resid_ppm_diff)) %>%
-  group_by(iteration, metric_type, exptCond, probe) %>%
+  group_by(iteration, model_type, metric_type, exptCond, probe) %>%
   summarize(pcor = cor(value_diff_resid, ppm_diff_resid)) %>%
   rename(perf_metric_type = "metric_type") %>%
-  summarize_report(pcor, perf_metric_type, exptCond, probe, stat_name = "partial Pearson correlation") %>%
+  summarize_report(pcor, perf_metric_type, model_type, exptCond, probe, stat_name = "partial Pearson correlation") %>%
   select(-metric_type) %>% 
   rename(metric_type = "perf_metric_type") %>% 
   mutate(txt_apa_2 = glue::glue("partial Pearson correlation = {avg}, bootstrapped 95% CI [{q025}, {q975}]"))
 
 # at approx q925 this stuff starts to pop out. not q975
 pcor_diff_aprime_by_ppm <- aprime_by_ppm_boot %>%
-  select(iteration, metric_type, exptCond, probe, starts_with("resid")) %>%
+  select(iteration, model_type, metric_type, exptCond, probe, starts_with("resid")) %>%
   unnest(c(resid_value_diff, resid_ppm_diff)) %>%
-  group_by(iteration, metric_type, exptCond, probe) %>%
+  group_by(iteration, model_type, metric_type, exptCond, probe) %>%
   summarize(pcor = cor(value_diff_resid, ppm_diff_resid)) %>%
   ungroup() %>% 
   pivot_wider(names_from = c(exptCond, probe), values_from = pcor) %>%
@@ -677,24 +677,57 @@ pcor_diff_aprime_by_ppm <- aprime_by_ppm_boot %>%
          pcor_diff_ia = relational_room - control_art,
          pcor_diff_ir = relational_room - control_room) %>%
   rename(perf_metric_type = "metric_type") %>%
-  summarize_report(pcor_diff, perf_metric_type, stat_name = "partial Pearson's r difference")
+  summarize_report(pcor_diff, model_type, perf_metric_type, stat_name = "partial Pearson's r difference")
 ```
 
 _Supplementary Models of Performance._ The above analyses model the task as a 2 (condition: identical or similar) x 2 (attentional state: art or room) x 2 (smoking session: OFF or ON) factorial design. Although this has many advantages, there are also statistical disadvantages (see **Methods**). To assess whether our results vary based on statistical modeling approach, we also examined performance ON vs. OFF smoking with two other approaches. The first approach used a model with separate predictors for eight factorial levels of interest (i.e., the OFF and ON smoking sessions for identical art, identical room, similar art, and similar room trials). The second approach used four separate models to examine performance ON vs. OFF smoking in each task separately (one model each for identical art, identical room, similar art, similar room). We found that in these supplementary models, there was still no difference in performance between smoking sessions for any of the tasks. Thus, across multiple statistical modeling approaches, we failed to find a performance benefit ON vs OFF nicotine.
 
-_Individual Differences._ The above analyses treat smoking as a binary variable: they simply compared the ON and OFF smoking sessions. However, more precise information is available about individuals’ smoking, because for each session we obtained measures of expired breath carbon monoxide (CO) parts-per-million (ppm). This tells us how recently or how much an individual smoked, allowing us to investigate possible dose-dependent effects of nicotine smoking (e.g., Vollstädt-Klein et al., 2011; Vossel, Warbrick, Mobascher, Winterer, & Fink, 2011). If nicotine smoking enhances attentional performance, then the individuals who show the greatest CO ppm difference (in the ON vs. OFF smoking session) should show the greatest performance enhancements (in the ON vs. OFF smoking session). To investigate this, we ran four independent, between-participants linear regressions predicting A’ difference as a function of CO ppm difference (ON vs. OFF), with one regression for each task: identical art, identical room, similar art, and similar room.
+_Individual Differences._ The above analyses treat smoking as a binary variable: they simply compared the ON and OFF smoking sessions. However, more precise information is available about individuals’ smoking, because for each session we obtained measures of expired breath carbon monoxide (CO) parts-per-million (ppm). This tells us how recently or how much an individual smoked, allowing us to investigate possible dose-dependent effects of nicotine smoking (e.g., Vollstädt-Klein et al., 2011; Vossel, Warbrick, Mobascher, Winterer, & Fink, 2011). If nicotine smoking enhances attentional performance, then the individuals who show the greatest CO ppm difference (in the ON vs. OFF smoking session) should show the greatest performance enhancements (in the ON vs. OFF smoking session). To investigate this, we ran four between-participants linear regressions predicting A’ difference as a function of CO ppm difference (ON vs. OFF), with one regression for each task: identical art, identical room, similar art, and similar room.
 
 **Figure 6.** Dose-dependent effects of nicotine smoking on behavioral sensitivity (A’). On similar room trials (bottom right), participants who showed a greater increase in CO ppm from the OFF to the ON smoking session showed larger increases in A’ from the OFF to the ON smoking session. Participants did not show such an effect for identical art, identical room, or similar art trials. Within each panel, each point represents one participant; each participant appears in all four panels. Heavy lines and error ribbons indicate line of best fit +- 95% confidence interval for ON-OFF A' difference vs. ON-OFF CO ppm difference, displayed without adjusting for A' OFF smoking for simplicity. Results are visually indistinguishable when adjusting for A' OFF smoking. * bootstrapped p < .05.
 
-Indeed, we found a modest positive correlation between these measures for the similar room task (`r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "room", term == "ppm_diff") %>% pull(txt_apa_2)`; `r pcor_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`), such that a CO increase of 1 ppm from OFF to ON smoking predicted a `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "room", term == "ppm_diff") %>% pull(raw)` unit increase in A’ from OFF to ON smoking (**Figure 6**). CO ppm differences did not predict performance enhancements on any other trial type (identical art: `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "control", probe == "art", term == "ppm_diff") %>% pull(txt_apa_2)`; identical room: `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "control", probe == "room", term == "ppm_diff") %>% pull(txt_apa_2)`; similar art: `r coefs_aprime_by_ppm %>% filter(metric_type == "aprime", exptCond == "relational", probe == "art", term == "ppm_diff") %>% pull(txt_apa_2)`). Direct comparison showed that the partial Pearson correlation between CO ppm difference and A’ difference ON - OFF smoking for similar room trials was marginally higher than the partial Pearson correlations for the other three trial types (similar room > identical art: `r pcor_diff_aprime_by_ppm %>% filter(perf_metric_type == "aprime", metric_type == "ia") %>% pull(txt_apa)`; similar room > identical room: `r pcor_diff_aprime_by_ppm %>% filter(perf_metric_type == "aprime", metric_type == "ir") %>% pull(txt_apa)`; similar room > similar art: `r pcor_diff_aprime_by_ppm %>% filter(perf_metric_type == "aprime", metric_type == "sa") %>% pull(txt_apa)`).
+Indeed, we found a modest positive correlation between these measures for the similar room task (`r coefs_aprime_by_ppm %>% filter(model_type == "main", metric_type == "aprime", exptCond == "relational", probe == "room", term == "ppm_diff") %>% pull(txt_apa_2)`; `r pcor_aprime_by_ppm %>% filter(model_type == "main", metric_type == "aprime", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`), such that a CO increase of 1 ppm from OFF to ON smoking predicted a `r coefs_aprime_by_ppm %>% filter(model_type == "main", metric_type == "aprime", exptCond == "relational", probe == "room", term == "ppm_diff") %>% pull(raw)` unit increase in A’ from OFF to ON smoking (**Figure 6**). CO ppm differences did not predict performance enhancements on any other trial type (identical art: `r coefs_aprime_by_ppm %>% filter(model_type == "main", metric_type == "aprime", exptCond == "control", probe == "art", term == "ppm_diff") %>% pull(txt_apa_2)`; identical room: `r coefs_aprime_by_ppm %>% filter(model_type == "main", metric_type == "aprime", exptCond == "control", probe == "room", term == "ppm_diff") %>% pull(txt_apa_2)`; similar art: `r coefs_aprime_by_ppm %>% filter(model_type == "main", metric_type == "aprime", exptCond == "relational", probe == "art", term == "ppm_diff") %>% pull(txt_apa_2)`). Direct comparison showed that the partial Pearson correlation between CO ppm difference and A’ difference ON - OFF smoking for similar room trials was marginally higher than the partial Pearson correlations for the other three trial types (similar room > identical art: `r pcor_diff_aprime_by_ppm %>% filter(model_type == "main", perf_metric_type == "aprime", metric_type == "ia") %>% pull(txt_apa)`; similar room > identical room: `r pcor_diff_aprime_by_ppm %>% filter(model_type == "main", perf_metric_type == "aprime", metric_type == "ir") %>% pull(txt_apa)`; similar room > similar art: `r pcor_diff_aprime_by_ppm %>% filter(model_type == "main", perf_metric_type == "aprime", metric_type == "sa") %>% pull(txt_apa)`).
 
-Finally, an exploratory analysis examining hits and false alarms separately (rather than combined in an A' score) revealed that the smoking-related improvements on similar room trials were mostly driven by a reduction in false alarm rates (`r coefs_aprime_by_ppm %>% filter(metric_type == "rate_fa", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`) rather than a change in hit rates (`r coefs_aprime_by_ppm %>% filter(metric_type == "rate_hit", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`). This result is broadly consistent with studies showing that nicotine can selectively reduce false alarms while not affecting hit rates ([Barr et al., 2007](https://www.nature.com/articles/1301423); [Jubelt et al., 2014](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4078257/)), and nicotinic antagonists can increase false alarms with minimal effects on hits ([Newhouse, Potter, Corwin, & Lenox, 1992](https://link.springer.com/article/10.1007/BF02247425)). However, we made no a priori predictions about hit and false alarm rates, so this pattern of results should be replicated in future studies.
+Finally, an exploratory analysis examining hits and false alarms separately (rather than combined in an A' score) revealed that the smoking-related improvements on similar room trials were mostly driven by a reduction in false alarm rates (`r coefs_aprime_by_ppm %>% filter(model_type == "main", term == "ppm_diff", metric_type == "rate_fa", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`) rather than a change in hit rates (`r coefs_aprime_by_ppm %>% filter(model_type == "main", term == "ppm_diff", metric_type == "rate_hit", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`). This result is broadly consistent with studies showing that nicotine can selectively reduce false alarms while not affecting hit rates ([Barr et al., 2007](https://www.nature.com/articles/1301423); [Jubelt et al., 2014](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4078257/)), and nicotinic antagonists can increase false alarms with minimal effects on hits ([Newhouse, Potter, Corwin, & Lenox, 1992](https://link.springer.com/article/10.1007/BF02247425)). However, we made no a priori predictions about hit and false alarm rates, so this pattern of results should be replicated in future studies.
 
 ## Supplemental results
 
+### ANOVA version of main logistic mixed models
+
+```{r}
+anova_out <- aprime_anova %>% 
+  summary() %>% 
+  .$`Error: Within` %>% 
+  pluck(1) %>% 
+  set_rownames(str_trim(rownames(.), "right")) %>%
+  as_tibble(rownames = "condition") %>% 
+  set_names(str_replace(tolower(names(.)), " ", "_")) %>% 
+  rename(p_value = "pr(>f)") %>% 
+  mutate(df_resid = df[condition == "Residuals"]) %>% 
+  filter(condition != "Residuals") %>%
+  mutate(txt_df = paste(df, df_resid, sep = ", "),
+         txt_f_value = formatC(signif(f_value, digits = signif_digits),
+                       digits = signif_digits, format = "fg", flag = "#", mode = "double"),
+         txt_p_value = formatC(signif(p_value, digits = signif_digits),
+                       digits = signif_digits-1, format = "fg", flag = "#", mode = "double"),
+         txt_p_value_full = if_else(p_value < .001, "p < .001", paste0("p = ", txt_p_value)),
+         txt_apa = glue::glue("F({txt_df}) = {txt_f_value}, {txt_p_value_full}"))
+
+anova_dfs <- paste(anova_out %>% filter(condition %in% c("exptCond", "Residuals")) %>% pull(df), collapse = ", ")
+
+```
+
+In addition to our analyses based on logistic mixed models, we conducted a more traditional repeated-measures analysis of variance (ANOVA) as a post-hoc, supplementary robustness check. This ANOVA is analogous to our main logistic mixed model (model #1 in Table 1), but uses participant-level A’ as the dependent variable, rather than trialwise yes/no responses. The independent variables were attentional state (art, room), condition (identical, similar), and smoking session (on, off), with all possible main effects, two-way, and three-way interactions. This ANOVA specification is roughly equivalent to a mixed model with only random intercepts for each participant. 
+
+Consistent with our logistic mixed model, the repeated-measures ANOVA revealed a main effect of condition (identical vs. similar; `r anova_out %>% filter(condition == "exptCond") %>% pull(txt_apa)`), and a two-way interaction between condition and attentional state (identical/similar vs. art/room; `r anova_out %>% filter(condition == "exptCond:probe") %>% pull(txt_apa)`). The remaining main effects and interactions were not meaningful (all F(`r anova_out %>% filter(condition == "exptCond:probe:on_smoking") %>% pull(txt_df)`) < `r anova_out %>% filter(condition == "exptCond:probe:on_smoking") %>% pull(txt_f_value)`, all p > `r anova_out %>% filter(condition == "exptCond:probe:on_smoking") %>% pull(txt_p_value)`).  Any post-hoc analyses exploring the directionality of these effects are functionally equivalent to the post-hoc analyses on our logistic mixed models described in the main text. We thus do not report additional post-hoc analyses on this repeated-measures ANOVA.
+
 ### Self-reported nicotine use covariates
 
+We collected a series of self-report measures of chronic nicotine use: the Fagerstrom Test for Nicotine Dependence (FTND), estimated cigarettes smoked/day, and years of smoking. To examine whether these chronic nicotine use variables might affect the relationship between CO ppm ON-OFF and A’ ON-OFF in the similar room task, we first conducted a principal components analysis. This enabled us to explore the correlations between self-reported nicotine use measures and expired breath CO (OFF smoking, ON smoking, and the ON-OFF difference), which in turn allows us to identify covariates that contribute unique information to the between-participants regression. All variables were z-scored before submitting to principal components analysis using R’s stats::prcomp() function. The first two principal components together explained `stuff`% of the total variance. FTND score, cigarettes/day, and all of the CO ppm measures contributed primarily to the first component, while years of smoking contributed to the second component only. The covariance between FTND score, cigarettes/day, and CO ppm makes intuitive sense, because individuals who smoke more cigarettes per day are likely to report higher levels of nicotine dependence and to smoke more prior to the ON session.
 
+**Supplementary Figure 1.** Principal components analysis on nicotine use measures. The first principal component explains `stuff`% of total variance, while the second component explains `stuff`%. CO ppm OFF, cigarettes/day, and FTND score contribute almost exclusively to the first component, while CO ppm ON and CO ppm ON - OFF contribute a bit more to the first than the second component. Years of smoking contributes almost exclusively to the second component. Length of arrow indexes how well the first two principal components capture the variance in that variable. A variable whose arrow touches the unit circle is completely explained by some combination of the first two components, while a variable with a very short arrow is poorly explained by the first two components. Arrow angle indexes the ratio of contributions of the first two principal components to that variable. A variable whose arrow points along either the x or y axis selectively contributes to the first or second principal components respectively, while a variable whose arrow points at a 45-degree angle contributes equally to the first and second principal components.
+
+Given that FTND score and cigarettes/day covaried with CO ppm, while years smoking seemed to capture unique information, we opted to use only the years smoking variable as a covariate in the between-participants CO ppm model for similar room trials. This is well justified because using correlated predictors in regression can lead to coefficients that are uninterpretable (Farrar & Glauber, 1967).  Adding years smoking as a covariate to the analyses revealed that reported years of smoking did not predict A’ ON-OFF (`r coefs_aprime_by_ppm %>% filter(model_type == "covar", metric_type == "aprime", exptCond == "relational", probe == "room", term == "years_smoke") %>% pull(txt_apa_2)`). Further, reported years of smoking did not fundamentally alter the effect of CO ppm on A’ ON-OFF (without covariate: `r coefs_aprime_by_ppm %>% filter(model_type == "main", metric_type == "aprime", exptCond == "relational", probe == "room", term == "ppm_diff") %>% pull(txt_apa_2)`; with covariate: `r coefs_aprime_by_ppm %>% filter(model_type == "covar", metric_type == "aprime", exptCond == "relational", probe == "room", term == "ppm_diff") %>% pull(txt_apa_2)`). The partial Pearson correlation between CO ppm difference and A’ difference ON - OFF smoking was similarly unaffected by years smoking (without covariate: `r pcor_aprime_by_ppm %>% filter(model_type == "main", metric_type == "aprime", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`; with covariate: `r pcor_aprime_by_ppm %>% filter(model_type == "covar", metric_type == "aprime", exptCond == "relational", probe == "room") %>% pull(txt_apa_2)`). We note that `english::english(sum(is.na(demos$years_smoke)))` participants were missing reported years of smoking, and were kept in the original regression, but excluded from the regression with the covariate. This reduction in sample size may contribute to the wider CIs observed for the effect of CO ppm in the covariate regression. This analysis therefore does not reveal strong evidence that prolonged nicotine use had an effect on our observed results.
 
 ## Not exactly in the main text
 
