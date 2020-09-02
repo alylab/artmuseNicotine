@@ -345,6 +345,13 @@
       "Repository": "CRAN",
       "Hash": "7067d90c1c780bfe80c0d497e3d7b49d"
     },
+    "english": {
+      "Package": "english",
+      "Version": "1.2-5",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "0034125bf70da4d2927259af7fe108c5"
+    },
     "evaluate": {
       "Package": "evaluate",
       "Version": "0.14",
@@ -914,10 +921,8 @@
     },
     "renv": {
       "Package": "renv",
-      "Version": "0.10.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "0d3f1c2b63e70b3d918246b4e2ca59b7"
+      "Version": "0.12.0",
+      "Source": "Repository"
     },
     "reprex": {
       "Package": "reprex",
