@@ -1,6 +1,6 @@
 # art-muse-nicotine
 
-Welcome to the code and raw data repo for our project (link to preprint or published paper will go here)!
+Welcome to the code and raw data repo for our project ([preprint](https://doi.org/10.1101/2020.05.19.104497))!
 
 ## Setup
 
