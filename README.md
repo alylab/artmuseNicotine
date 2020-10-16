@@ -1,6 +1,6 @@
 # art-muse-nicotine
 
-Welcome to the code and raw data repo for our project (https://doi.org/10.1101/2020.05.19.104497)!
+Welcome to the code and raw data repo for our project ([preprint](https://doi.org/10.1101/2020.05.19.104497))!
 
 ## Setup
 
@@ -13,21 +13,21 @@ The project was run in R 3.6.1, and we've used the [renv](https://rstudio.github
 To reproduce the analyses reported in our text, you'll need to:
 
 1. Download our intermediate R files or reproduce them from the provided raw data
-2. Knit R/report.Rmd to generate the results, embedded in the body text of our results section
+2. Knit `R/report.Rmd` to generate the results, embedded in the body text of our results section
 
-To reproduce the results in the main text, open R/report.Rmd in RStudio and knit it to HTML. 
+To reproduce the results in the main text, open `R/report.Rmd` in RStudio and knit it to HTML. 
 
 (We haven't provided a make recipe for the report file, as we've encountered OS-dependent issues with knitting .Rmds through make. The issue seems to stem from a failure to locate R's pandoc installation when using the Rscript bash command to run R code through the terminal in some Mac operating systems.)
 
 ### Downloading our R files
 
-The intermediate R data are uploaded to Dryad (link will go here) for downloading. You will need to download these separately if you wish to use them, as they're a bit too large to provide via GitHub. Once you download the files, put them into the sub-folder [ignore/data_R](#data_r), and report.Rmd should behave just fine.
+The intermediate R data are uploaded to [Dryad](https://datadryad.org/stash/dataset/doi:10.5061/dryad.79cnp5hs7) for downloading. You will need to download these separately if you wish to use them, as they're a bit too large to provide via GitHub. Once you download the files, put them into the sub-folder [`ignore/data_R`](#data_r), and report.Rmd should behave just fine.
 
 ### Reproducing our R files from scratch
 
 If you wish to recreate these data by running the code, you can use the recipes in the included Makefile to make the key ones, by running the following commands in a terminal with the working directory set to this folder:
 
-```
+```bash
 make ignore/data_R/preplots_rstanarm.rda
 make ignore/data_R/aprime_by_ppm.rda
 ```
